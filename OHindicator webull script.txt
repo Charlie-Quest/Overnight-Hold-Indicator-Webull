@@ -1,0 +1,69 @@
+study("ONH Indicator,")
+
+// ─────────────────────────────
+// 🔧 User Inputs (Webull define style)
+// ─────────────────────────────
+avgLength = define(name="Avg Vol Length", type=define.integer, default_value=20)
+volMult = define(name="Min Vol Multiple", type=define.float, default_value=2.0,step_length=0.1)
+closeNearHighPct = define(name="Close Near High %", type=define.float, default_value=0.85, step_length=0.05)
+minClose = define(name="Min Close Price", type=define.float, default_value=3.0)
+minVol = define(name="Min Volume", type=define.integer, default_value=1000000)
+
+// ─────────────────────────────
+// 📊 Core Calculations
+// ─────────────────────────────
+// Volume Calculations
+avgVol = ind.sma(volume, avgLength)
+volRatio = volume / avgVol
+strongVolume = volume > (avgVol * volMult)
+
+// Close Strength Calculation
+// We calculate range first to avoid divide-by-zero errors
+// before i had  add 0.000001 to eliminate 0 div
+rangeVal = high - low
+closeStrength = iff(rangeVal == 0, 0, (close - low) / rangeVal)
+
+strongClose = closeStrength >= closeNearHighPct
+strongCloseColor = iff(strongClose, color.green, color.red)
+strongClosePlot = iff(strongClose, closeStrength*10, 0)
+
+ 
+plt(closeStrength, name="closeStrength %", color=strongCloseColor, type=plt.type_circles, line_width=2, label_on_y_axis=true)
+
+// Trend & Reversal Logic
+sma20 = ind.sma(close, 20)
+sma50 = ind.sma(close, 50)
+trendUp = sma20 > sma50
+
+lowest30 = math.lowest(close, 30)
+reversalFromBottom = close > (lowest30 * 1.15)
+
+// Filters
+priceFilter = close > minClose
+liquidityFilter = volume > minVol
+
+// ─────────────────────────────
+// ✅ ONH Condition + Score
+// ─────────────────────────────
+// Master Signal (Boolean)
+//onhCandidate = define(name="onhCandidate", type=define.bool, default_value=false)
+onhCandidate = strongVolume and strongClose and priceFilter and liquidityFilter and (trendUp or reversalFromBottom)
+
+// Scoring System
+onhScore = (volRatio * 0.6) + (closeStrength * 0.4)
+
+// ─────────────────────────────
+// 📈 Plotting
+// ─────────────────────────────
+// Reference Line
+plt(1.5, name="Threshold", color=color.white, line_width=1, type=plt.type_line,  base_line=0, offset=0, label_on_y_axis=true)
+
+//# Raw Score (Gray Histogram)
+plt(onhScore, name="Score", color=color.gray, line_width=1, type=plt.type_histogram,  base_line=0, offset=0, label_on_y_axis=true)
+
+//# Signal Overlay (Green Histogram if Candidate is True)
+
+//closeStrength = iff(rangeVal == 0, 0, (close - low) / rangeVal)
+signalValue = iff(onhCandidate==true, onhScore, 0.0)
+signalColor= iff(onhCandidate==true, color.green, color.red)
+plt(signalValue, name="ONH Signal", color=signalColor, line_width=3, type=plt.type_histogram,  base_line=0, offset=0, label_on_y_axis=true)
