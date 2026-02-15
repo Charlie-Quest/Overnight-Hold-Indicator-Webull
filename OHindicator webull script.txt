@@ -1,4 +1,6 @@
-study("ONH Indicator,")
+study("ONH Indicator")
+// Coded by Charlie-Quest
+// Credit IrishBornIvestor for the Pine version.
 
 // ─────────────────────────────
 // 🔧 User Inputs (Webull define style)
